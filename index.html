@@ -3,33 +3,118 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Verse Read-Along (Segment + Word Striping)</title>
+  <title>Verse Read-Along (Portrait)</title>
   <style>
     :root{
       --bg:#0b0f14; --fg:#eef2f7; --muted:#a9b4c0;
       --hl:#ffe27a; --hlBg:rgba(255,226,122,.18);
       --btnBg:rgba(255,255,255,.08); --btnBgHover:rgba(255,255,255,.12);
       --btnBorder:rgba(255,255,255,.14);
-
-      /* word striping */
       --w0Bg: rgba(255,255,255,0.06);
       --w1Bg: rgba(255,255,255,0.00);
-      --wPadX: 0.10em;
-      --wPadY: 0.03em;
-      --wRadius: 0.28em;
     }
 
     *{box-sizing:border-box}
     html,body{height:100%;margin:0}
-    body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;overflow:hidden}
+    body{
+      background:var(--bg);
+      color:var(--fg);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      overflow:hidden; /* page itself doesn't scroll */
+      touch-action: manipulation;
+    }
 
-    .app{height:100dvh;width:100vw;display:flex;flex-direction:column;padding:clamp(14px,2.8vw,28px);gap:clamp(10px,2vw,18px)}
-    header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex:0 0 auto}
-    .ref{font-weight:800;font-size:clamp(16px,2.6vw,24px);white-space:nowrap}
-    .status{color:var(--muted);font-size:clamp(12px,1.8vw,16px);white-space:nowrap}
+    /* Portrait-first layout: top bar, scrollable verse, bottom bar */
+    .app{
+      height:100dvh;
+      width:100vw;
+      display:flex;
+      flex-direction:column;
+    }
 
-    .verseWrap{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;padding:clamp(6px,1.6vw,12px)}
-    .verse{width:min(1100px,100%);font-size:clamp(22px,3.2vw,44px);line-height:1.35;letter-spacing:.2px;user-select:none;text-wrap:pretty}
+    .topbar{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 12px;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .top-left{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width: 0;
+    }
+
+    .ref{
+      font-weight:800;
+      font-size:16px;
+      letter-spacing:.2px;
+      white-space:nowrap;
+    }
+
+    .status{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    .top-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex:0 0 auto;
+    }
+
+    .iconbtn{
+      appearance:none;
+      border:1px solid var(--btnBorder);
+      background:var(--btnBg);
+      color:var(--fg);
+      border-radius:12px;
+      width:44px;
+      height:44px;
+      font-size:20px;
+      font-weight:850;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:background 120ms ease;
+      user-select:none;
+    }
+    .iconbtn:hover{background:var(--btnBgHover)}
+    .iconbtn:active{transform:translateY(.5px)}
+    .iconbtn:disabled{opacity:.5;cursor:not-allowed}
+
+    .verseWrap{
+      flex:1 1 auto;
+      min-height:0; /* critical so inner scroll works */
+      padding: 14px 12px;
+    }
+
+    /* This is the only scrolling area */
+    .verseScroll{
+      height:100%;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 6px 4px 18px 4px;
+      scrollbar-width: thin;
+    }
+
+    .verse{
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      font-size: clamp(22px, 4.4vw, 40px);
+      line-height: 1.35;
+      letter-spacing: .2px;
+      text-wrap: pretty;
+      user-select:none;
+    }
 
     .seg{
       padding:.05em .14em;
@@ -45,123 +130,208 @@
 
     .word{
       display:inline-block;
-      padding: var(--wPadY) var(--wPadX);
-      border-radius: var(--wRadius);
+      padding:.03em .10em;
+      border-radius:.28em;
       margin: 0 .03em 0 0;
     }
     .word.w0{ background: var(--w0Bg); }
     .word.w1{ background: var(--w1Bg); }
-
-    /* Keep striping visible even when active */
     .seg.active .word.w0{ background: rgba(255,255,255,0.10); }
     .seg.active .word.w1{ background: rgba(255,255,255,0.03); }
 
-    footer{flex:0 0 auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
-    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-
-    button{
-      appearance:none;border:1px solid var(--btnBorder);background:var(--btnBg);color:var(--fg);
-      border-radius:14px;padding:12px 16px;font-size:16px;font-weight:800;cursor:pointer;transition:background 120ms ease;
-      min-width: 170px;
+    .bottombar{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-around;
+      gap: 10px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(11,15,20,.98);
+      backdrop-filter: blur(8px);
     }
-    button:hover{background:var(--btnBgHover)}
-    button:active{transform:translateY(.5px)}
-    button:disabled{opacity:.5;cursor:not-allowed}
 
-    .small{font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    select,input[type="range"]{background:transparent;color:var(--fg);border:1px solid var(--btnBorder);border-radius:10px;padding:8px 10px;font-size:14px}
-    input[type="range"]{padding:0;height:34px;width:150px;border-radius:10px}
+    /* Make bottom buttons big + easy */
+    .navbtn{
+      width: 64px;
+      height: 54px;
+      border-radius: 16px;
+      font-size: 24px;
+    }
+
+    .hint{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(76px + env(safe-area-inset-bottom));
+      color: rgba(255,255,255,.65);
+      font-size: 12px;
+      pointer-events:none;
+      opacity:0;
+      transition: opacity 200ms ease;
+    }
+    .hint.show{opacity:1}
+
+    /* Soft nudge: if landscape, show an overlay */
+    .rotateOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.72);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 24px;
+      text-align:center;
+      z-index: 50;
+    }
+    .rotateOverlay .card{
+      max-width: 420px;
+      background: rgba(11,15,20,.94);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 18px 16px;
+      color: var(--fg);
+    }
+    .rotateOverlay .title{
+      font-weight: 850;
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+    .rotateOverlay .sub{
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    @media (orientation: landscape){
+      .rotateOverlay{display:flex;}
+    }
 
     @media (prefers-reduced-motion: reduce){
       .seg{transition:none}
-      button:active{transform:none}
+      .iconbtn:active{transform:none}
+      .hint{transition:none}
     }
   </style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div class="ref">1 Nephi 1:1</div>
-    <div class="status" id="status">Ready</div>
-  </header>
-
-  <main class="verseWrap">
-    <div class="verse" id="verse" aria-label="Verse text"></div>
-  </main>
-
-  <footer>
-    <div class="controls">
-      <button id="btnPrev" disabled>◀ Previous</button>
-      <button id="btnReplay" disabled>⟲ Replay</button>
-      <button id="btnNext">Next ▶</button>
+  <!-- TOP ROW: placeholder nav buttons (left, up, right triangles) -->
+  <div class="topbar">
+    <div class="top-left">
+      <div class="ref">1 Nephi 1:1</div>
+      <div class="status" id="status">Ready</div>
     </div>
 
-    <div class="small">
-      <label>Voice: <select id="voiceSelect" aria-label="Voice"></select></label>
-      <label>Rate:
-        <input id="rate" type="range" min="0.6" max="1.4" step="0.05" value="0.75" />
-        <span id="rateVal">1.00</span>
-      </label>
+    <div class="top-actions" aria-label="Navigation placeholders">
+      <button class="iconbtn" id="btnTopLeft" title="Left (placeholder)" aria-label="Left (placeholder)">◀</button>
+      <button class="iconbtn" id="btnTopUp" title="Up (placeholder)" aria-label="Up (placeholder)">▲</button>
+      <button class="iconbtn" id="btnTopRight" title="Right (placeholder)" aria-label="Right (placeholder)">▶</button>
     </div>
-  </footer>
+  </div>
+
+  <!-- SCROLLABLE VERSE AREA -->
+  <div class="verseWrap">
+    <div class="verseScroll" id="verseScroll">
+      <div class="verse" id="verse" aria-label="Verse text"></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM: 3 buttons, symbols only -->
+  <div class="bottombar" aria-label="Playback controls">
+    <button class="iconbtn navbtn" id="btnPrev" title="Previous segment" aria-label="Previous segment">◀</button>
+    <button class="iconbtn navbtn" id="btnReplay" title="Replay segment" aria-label="Replay segment">⟲</button>
+    <button class="iconbtn navbtn" id="btnNext" title="Next segment" aria-label="Next segment">▶</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">Speaking…</div>
+
+<div class="rotateOverlay" aria-hidden="true">
+  <div class="card">
+    <div class="title">Rotate to portrait</div>
+    <div class="sub">This app is designed for portrait mode for easier reading.</div>
+  </div>
 </div>
 
 <script>
+  // --- Portrait locking (best effort) ---
+  // This only works in some environments (often installed PWAs / fullscreen),
+  // but it won't break anything if unsupported.
+  async function tryLockPortrait() {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("portrait");
+      }
+    } catch (_) { /* ignore */ }
+  }
+  window.addEventListener("load", tryLockPortrait);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) tryLockPortrait();
+  });
+
+  // --- Elements ---
   const verseEl = document.getElementById("verse");
+  const verseScroll = document.getElementById("verseScroll");
   const statusEl = document.getElementById("status");
+  const hintEl = document.getElementById("hint");
 
   const btnPrev = document.getElementById("btnPrev");
   const btnReplay = document.getElementById("btnReplay");
   const btnNext = document.getElementById("btnNext");
 
-  const voiceSelect = document.getElementById("voiceSelect");
-  const rateEl = document.getElementById("rate");
-  const rateVal = document.getElementById("rateVal");
+  // Placeholder buttons (do nothing for now)
+  document.getElementById("btnTopLeft").addEventListener("click", () => {});
+  document.getElementById("btnTopUp").addEventListener("click", () => {});
+  document.getElementById("btnTopRight").addEventListener("click", () => {});
 
+  // --- Content ---
+  // 1 Nephi 1:1 (LDS scripture text)
   const verseText =
     "I, Nephi, having been born of goodly parents, therefore I was taught somewhat in all the learning of my father; " +
     "and having seen many afflictions in the course of my days, nevertheless, having been highly favored of the Lord " +
     "in all my days; yea, having had a great knowledge of the goodness and the mysteries of God, therefore I make a record " +
     "of my proceedings in my days.";
 
+  // --- Segment player state ---
   let segments = [];
   let segSpans = [];
   let currentSegIndex = 0;
   let speaking = false;
 
-  function setStatus(msg){ statusEl.textContent = msg; }
+  function setStatus(msg) { statusEl.textContent = msg; }
+  function showHint(msg) {
+    hintEl.textContent = msg;
+    hintEl.classList.add("show");
+    clearTimeout(showHint._t);
+    showHint._t = setTimeout(() => hintEl.classList.remove("show"), 800);
+  }
 
-  function updateButtons(){
+  function updateButtons() {
     btnPrev.disabled = speaking || currentSegIndex <= 0;
     btnNext.disabled = speaking || currentSegIndex >= segments.length - 1;
     btnReplay.disabled = speaking || segments.length === 0;
   }
 
-  function setActiveSegment(i){
+  function setActiveSegment(i) {
     if (segSpans[currentSegIndex]) segSpans[currentSegIndex].classList.remove("active");
     currentSegIndex = Math.max(0, Math.min(i, segments.length - 1));
     if (segSpans[currentSegIndex]) segSpans[currentSegIndex].classList.add("active");
     updateButtons();
+    // Keep active segment visible in scroll area (gentle, not required)
+    segSpans[currentSegIndex]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
   }
 
-  function getSelectedVoice(){
-    const name = voiceSelect.value;
-    const voices = speechSynthesis.getVoices() || [];
-    return voices.find(v => v.name === name) || null;
-  }
-
-  function splitIntoSegments(text){
+  function splitIntoSegments(text) {
     const s = text.replace(/\s+/g, " ").trim();
     const re = /[^,;:.!?]+(?:[,;:.!?]+|$)/g;
     const matches = s.match(re) || [];
     return matches.map(x => x.trim()).filter(Boolean);
   }
 
-  function renderSegmentWords(span, segText){
-    // Render each word with alternating style for visual differentiation
+  function renderSegmentWords(span, segText) {
     const words = segText.split(/\s+/).filter(Boolean);
-    span.textContent = ""; // clear
-
+    span.textContent = "";
     words.forEach((w, idx) => {
       const ws = document.createElement("span");
       ws.className = "word " + (idx % 2 === 0 ? "w0" : "w1");
@@ -171,7 +341,7 @@
     });
   }
 
-  function renderSegments(){
+  function renderSegments() {
     segments = splitIntoSegments(verseText);
     verseEl.innerHTML = "";
     segSpans = [];
@@ -181,7 +351,7 @@
       span.className = "seg";
       renderSegmentWords(span, seg);
 
-      // Tap to jump + play
+      // Tap a segment to jump + play it (helps accessibility)
       span.addEventListener("click", () => speakSegment(i));
 
       verseEl.appendChild(span);
@@ -194,23 +364,21 @@
     updateButtons();
   }
 
-  function makeUtterance(text){
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = Number(rateEl.value) || 1.0;
-    u.pitch = 1;
-    u.lang = "en-US";
-    const voice = getSelectedVoice();
-    if (voice) u.voice = voice;
-    return u;
-  }
-
-  function stopSpeech(){
+  function stopSpeech() {
     speechSynthesis.cancel();
     speaking = false;
     updateButtons();
   }
 
-  function speakSegment(index){
+  function makeUtterance(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    // Keep defaults simple for now; you can reintroduce voice/rate later if needed.
+    u.lang = "en-GB";
+    u.rate = 0.90;
+    return u;
+  }
+
+  function speakSegment(index) {
     if (!segments.length) return;
 
     stopSpeech();
@@ -218,7 +386,8 @@
 
     const segText = segments[currentSegIndex];
     speaking = true;
-    setStatus(`Speaking… (${currentSegIndex + 1}/${segments.length})`);
+    setStatus(`${currentSegIndex + 1}/${segments.length}`);
+    showHint("Speaking…");
     updateButtons();
 
     const u = makeUtterance(segText);
@@ -228,69 +397,30 @@
       setStatus("Ready");
       updateButtons();
     };
-    u.onerror = (e) => {
+    u.onerror = () => {
       speaking = false;
-      setStatus("TTS error: " + (e.error || "unknown"));
+      setStatus("TTS error");
       updateButtons();
     };
 
     speechSynthesis.speak(u);
   }
 
+  // Bottom controls: symbols only
   btnPrev.addEventListener("click", () => speakSegment(currentSegIndex - 1));
   btnReplay.addEventListener("click", () => speakSegment(currentSegIndex));
   btnNext.addEventListener("click", () => speakSegment(currentSegIndex + 1));
 
-  rateEl.addEventListener("input", () => {
-    rateVal.textContent = Number(rateEl.value).toFixed(2);
-  });
-
-  function loadVoices(){
-    const voices = speechSynthesis.getVoices() || [];
-    voiceSelect.innerHTML = "";
-
-    const sorted = [...voices].sort((a,b)=>{
-      const aEn = (a.lang||"").toLowerCase().startsWith("en");
-      const bEn = (b.lang||"").toLowerCase().startsWith("en");
-      if (aEn !== bEn) return aEn ? -1 : 1;
-      return (a.name||"").localeCompare(b.name||"");
-    });
-
-    for (const v of sorted){
-      const opt = document.createElement("option");
-      opt.value = v.name;
-      opt.textContent = `${v.name} (${v.lang})`;
-      voiceSelect.appendChild(opt);
-    }
-
-    // Prefer Google UK English Male if available
-    const preferred = sorted.find(v => v.name === "Google UK English Male");
-    if (preferred) voiceSelect.value = preferred.name;
-    else {
-      const enGB = sorted.find(v => (v.lang||"").toLowerCase().startsWith("en-gb"));
-      if (enGB) voiceSelect.value = enGB.name;
-      else {
-        const enAny = sorted.find(v => (v.lang||"").toLowerCase().startsWith("en"));
-        if (enAny) voiceSelect.value = enAny.name;
-        else voiceSelect.value = sorted[0]?.name || "";
-      }
-    }
-
-    setStatus(sorted.length ? "Ready" : "No voices found (check TTS availability)");
-  }
-
   // Init
-  renderSegments();
-  rateVal.textContent = Number(rateEl.value).toFixed(2);
-
-  if (typeof speechSynthesis !== "undefined") {
-    loadVoices();
-    speechSynthesis.onvoiceschanged = () => loadVoices();
-  } else {
-    setStatus("SpeechSynthesis not supported in this browser");
+  if (typeof speechSynthesis === "undefined") {
+    setStatus("No TTS");
     btnPrev.disabled = btnReplay.disabled = btnNext.disabled = true;
+  } else {
+    setStatus("Ready");
   }
+  renderSegments();
 
+  // Safety: stop speech when leaving
   window.addEventListener("pagehide", stopSpeech);
 </script>
 </body>
