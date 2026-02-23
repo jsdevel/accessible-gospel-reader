@@ -1,0 +1,1111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Gospel Library Reader (Portrait)</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --fg:#eef2f7; --muted:#a9b4c0;
+      --hl:#ffe27a; --hlBg:rgba(255,226,122,.18);
+      --btnBg:rgba(255,255,255,.08); --btnBgHover:rgba(255,255,255,.12);
+      --btnBorder:rgba(255,255,255,.14);
+      --w0Bg: rgba(255,255,255,0.06);
+      --w1Bg: rgba(255,255,255,0.00);
+
+      --cardBg: rgba(255,255,255,.06);
+      --cardBorder: rgba(255,255,255,.12);
+      --chipBg: rgba(255,255,255,.08);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{
+      background:var(--bg);
+      color:var(--fg);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      overflow:hidden; /* page itself doesn't scroll */
+      touch-action: manipulation;
+    }
+
+    /* Portrait-first layout: top bar, scrollable content, bottom bar */
+    .app{
+      height:100dvh;
+      width:100vw;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .topbar{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 12px;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .top-left{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width: 0;
+    }
+
+    .ref{
+      font-weight:800;
+      font-size:16px;
+      letter-spacing:.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 58vw;
+    }
+
+    .status{
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 58vw;
+    }
+
+    .top-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex:0 0 auto;
+    }
+
+    .iconbtn{
+      appearance:none;
+      border:1px solid var(--btnBorder);
+      background:var(--btnBg);
+      color:var(--fg);
+      border-radius:12px;
+      width:44px;
+      height:44px;
+      font-size:20px;
+      font-weight:850;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:background 120ms ease, transform 120ms ease;
+      user-select:none;
+    }
+    .iconbtn:hover{background:var(--btnBgHover)}
+    .iconbtn:active{transform:translateY(.5px)}
+    .iconbtn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+    .contentWrap{
+      flex:1 1 auto;
+      min-height:0; /* critical so inner scroll works */
+      padding: 14px 12px;
+    }
+
+    /* This is the only scrolling area */
+    .contentScroll{
+      height:100%;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 6px 4px 18px 4px;
+      scrollbar-width: thin;
+    }
+
+    /* Player verse */
+    .verse{
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      font-size: clamp(22px, 4.4vw, 40px);
+      line-height: 1.35;
+      letter-spacing: .2px;
+      text-wrap: pretty;
+      user-select:none;
+    }
+
+    .seg{
+      padding:.05em .14em;
+      border-radius:.40em;
+      transition:background 120ms linear,color 120ms linear, outline-color 120ms linear;
+    }
+    .seg.active{
+      background: var(--hlBg);
+      color: var(--hl);
+      outline: 1px solid rgba(255,226,122,.35);
+      outline-offset: 1px;
+    }
+
+    .word{
+      display:inline-block;
+      padding:.03em .10em;
+      border-radius:.28em;
+      margin: 0 .03em 0 0;
+    }
+    .word.w0{ background: var(--w0Bg); }
+    .word.w1{ background: var(--w1Bg); }
+    .seg.active .word.w0{ background: rgba(255,255,255,0.10); }
+    .seg.active .word.w1{ background: rgba(255,255,255,0.03); }
+
+    /* List / nav UI */
+    .list{
+      max-width: 820px;
+      margin: 0 auto;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    .card{
+      background: var(--cardBg);
+      border: 1px solid var(--cardBorder);
+      border-radius: 18px;
+      padding: 12px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      cursor:pointer;
+      user-select:none;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+    .card:hover{ background: rgba(255,255,255,.075); }
+    .card:active{ transform: translateY(.5px); }
+    .card .title{
+      font-size: 16px;
+      font-weight: 780;
+      line-height: 1.2;
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .card .sub{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .card .meta{
+      display:flex;
+      flex-direction:column;
+      min-width: 0;
+      flex:1 1 auto;
+    }
+    .card .chev{
+      opacity:.85;
+      font-size: 18px;
+      flex:0 0 auto;
+      padding-left: 6px;
+    }
+
+    .chips{
+      max-width: 820px;
+      margin: 0 auto 10px auto;
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+    .chip{
+      border:1px solid rgba(255,255,255,.14);
+      background: var(--chipBg);
+      color: var(--fg);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      user-select:none;
+      cursor:pointer;
+    }
+
+    .bottombar{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-around;
+      gap: 10px;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(11,15,20,.98);
+      backdrop-filter: blur(8px);
+    }
+
+    /* Make bottom buttons big + easy */
+    .navbtn{
+      width: 64px;
+      height: 54px;
+      border-radius: 16px;
+      font-size: 24px;
+    }
+
+    .hint{
+      position: fixed;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(76px + env(safe-area-inset-bottom));
+      color: rgba(255,255,255,.65);
+      font-size: 12px;
+      pointer-events:none;
+      opacity:0;
+      transition: opacity 200ms ease;
+    }
+    .hint.show{opacity:1}
+
+    /* Soft nudge: if landscape, show an overlay */
+    .rotateOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.72);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 24px;
+      text-align:center;
+      z-index: 50;
+    }
+    .rotateOverlay .card{
+      max-width: 420px;
+      background: rgba(11,15,20,.94);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 18px;
+      padding: 18px 16px;
+      color: var(--fg);
+      cursor: default;
+      transform:none;
+    }
+    .rotateOverlay .card:active{transform:none}
+    .rotateOverlay .title{
+      font-weight: 850;
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+    .rotateOverlay .sub{
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    @media (orientation: landscape){
+      .rotateOverlay{display:flex;}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .seg{transition:none}
+      .iconbtn:active{transform:none}
+      .hint{transition:none}
+      .card:active{transform:none}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="top-left">
+      <div class="ref" id="ref">Scriptures</div>
+      <div class="status" id="status">Loading nav…</div>
+    </div>
+
+    <div class="top-actions" aria-label="Navigation">
+      <button class="iconbtn" id="btnBack" title="Back" aria-label="Back">◀</button>
+      <button class="iconbtn" id="btnHome" title="Home" aria-label="Home">▲</button>
+      <button class="iconbtn" id="btnForward" title="Forward" aria-label="Forward">▶</button>
+    </div>
+  </div>
+
+  <div class="contentWrap">
+    <div class="contentScroll" id="contentScroll">
+      <!-- NAV view list -->
+      <div class="chips" id="crumbs" style="display:none"></div>
+      <div class="list" id="list" aria-label="Navigation list"></div>
+
+      <!-- PLAYER view -->
+      <div class="verse" id="verse" aria-label="Verse text" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="bottombar" id="bottombar" aria-label="Playback controls" style="display:none">
+    <button class="iconbtn navbtn" id="btnPrev" title="Previous segment" aria-label="Previous segment">◀</button>
+    <button class="iconbtn navbtn" id="btnReplay" title="Replay segment" aria-label="Replay segment">⟲</button>
+    <button class="iconbtn navbtn" id="btnNext" title="Next segment" aria-label="Next segment">▶</button>
+  </div>
+</div>
+
+<div class="hint" id="hint">Speaking…</div>
+
+<div class="rotateOverlay" aria-hidden="true">
+  <div class="card">
+    <div class="title">Rotate to portrait</div>
+    <div class="sub">This app is designed for portrait mode for easier reading.</div>
+  </div>
+</div>
+
+<script>
+  // --- Portrait locking (best effort) ---
+  async function tryLockPortrait() {
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("portrait");
+      }
+    } catch (_) { /* ignore */ }
+  }
+  window.addEventListener("load", tryLockPortrait);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) tryLockPortrait();
+  });
+
+  // --- Elements ---
+  const refEl = document.getElementById("ref");
+  const statusEl = document.getElementById("status");
+  const hintEl = document.getElementById("hint");
+  const listEl = document.getElementById("list");
+  const verseEl = document.getElementById("verse");
+  const crumbsEl = document.getElementById("crumbs");
+  const contentScroll = document.getElementById("contentScroll");
+  const bottombarEl = document.getElementById("bottombar");
+
+  const btnBack = document.getElementById("btnBack");
+  const btnHome = document.getElementById("btnHome");
+  const btnForward = document.getElementById("btnForward");
+
+  const btnPrev = document.getElementById("btnPrev");
+  const btnReplay = document.getElementById("btnReplay");
+  const btnNext = document.getElementById("btnNext");
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+  function setRef(msg) { refEl.textContent = msg; }
+  function showHint(msg) {
+    hintEl.textContent = msg;
+    hintEl.classList.add("show");
+    clearTimeout(showHint._t);
+    showHint._t = setTimeout(() => hintEl.classList.remove("show"), 800);
+  }
+
+  // --- Simple history stack (for Back/Forward) ---
+  const historyStack = [];
+  let historyIndex = -1;
+
+  function pushState(state){
+    // state: {view, data}
+    historyStack.splice(historyIndex + 1);
+    historyStack.push(JSON.parse(JSON.stringify(state)));
+    historyIndex = historyStack.length - 1;
+    updateNavButtons();
+  }
+  function canBack(){ return historyIndex > 0; }
+  function canForward(){ return historyIndex < historyStack.length - 1; }
+  function updateNavButtons(){
+    btnBack.disabled = !canBack();
+    btnForward.disabled = !canForward();
+    btnHome.disabled = false;
+  }
+
+
+  function updateTopButtonsForPlayer(){
+    if (!currentChapterJson) { updateNavButtons(); return; }
+    const verses = currentChapterJson.verses || [];
+    btnBack.disabled = speaking || currentVerseIndex <= 0;
+    btnForward.disabled = speaking || currentVerseIndex >= verses.length - 1;
+    btnHome.disabled = false;
+  }
+
+  function updateTopButtonsForCurrentView(){
+    if (verseEl.style.display !== "none") updateTopButtonsForPlayer();
+    else updateNavButtons();
+  }
+
+  // (handlers bound later)
+
+  // --- Data caches ---
+  let navRoot = null;      // nav.json
+  const jsonCache = new Map(); // url -> parsed json
+
+  // Helper: fetch JSON with caching + nice errors
+  async function fetchJson(url){
+    const key = url;
+    if (jsonCache.has(key)) return jsonCache.get(key);
+
+    const res = await fetch(url, { cache: "force-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    const data = await res.json();
+    jsonCache.set(key, data);
+    return data;
+  }
+
+  function normalizeHref(href){
+    // nav.json has hrefs like "/study/scriptures/ot/gen/1.json"
+    // We want to be able to run locally too; treat them as relative.
+    if (!href) return href;
+    if (href.startsWith("http://") || href.startsWith("https://")) return href;
+    if (href.startsWith("/")) return href.slice(1);
+    return href;
+  }
+
+  // --- Views ---
+  // view types:
+  //   home: {view:'home'}
+  //   work: {view:'work', workIndex}
+  //   book: {view:'book', workIndex, bookIndex}
+  //   chapter: {view:'chapter', workIndex, bookIndex, segmentIndex}
+  //   player: {view:'player', workIndex, bookIndex, segmentIndex, verseIndex}
+  //
+  function showNavUI(){
+    listEl.style.display = "";
+    crumbsEl.style.display = "";
+    verseEl.style.display = "none";
+    bottombarEl.style.display = "none";
+  }
+  function showPlayerUI(){
+    listEl.style.display = "none";
+    crumbsEl.style.display = "none";
+    verseEl.style.display = "";
+    bottombarEl.style.display = "";
+  }
+
+  function clearList(){
+    listEl.innerHTML = "";
+  }
+
+  function renderCrumbs(items){
+    // items: [{label, onClick?}]
+    crumbsEl.innerHTML = "";
+    items.forEach((it, idx) => {
+      const chip = document.createElement("button");
+      chip.className = "chip";
+      chip.textContent = it.label;
+      chip.addEventListener("click", it.onClick || (() => {}));
+      crumbsEl.appendChild(chip);
+    });
+  }
+
+  function renderCards(items){
+    clearList();
+    items.forEach((it) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      card.setAttribute("role","button");
+      card.setAttribute("tabindex","0");
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+
+      const title = document.createElement("div");
+      title.className = "title";
+      title.textContent = it.title || "";
+
+      const sub = document.createElement("div");
+      sub.className = "sub";
+      sub.textContent = it.sub || "";
+
+      meta.appendChild(title);
+      if (it.sub) meta.appendChild(sub);
+
+      const chev = document.createElement("div");
+      chev.className = "chev";
+      chev.textContent = it.chev ?? "›";
+
+      card.appendChild(meta);
+      card.appendChild(chev);
+
+      const go = () => it.onClick && it.onClick();
+      card.addEventListener("click", go);
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); }
+      });
+
+      listEl.appendChild(card);
+    });
+
+    // when switching views, reset scroll to top
+    contentScroll.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  // --- Player (segment-based TTS) ---
+  let segments = [];
+  let segSpans = [];
+  let currentSegIndex = 0;
+  let speaking = false;
+
+  function updatePlayerButtons() {
+    btnPrev.disabled = speaking || currentSegIndex <= 0;
+    btnNext.disabled = speaking || currentSegIndex >= segments.length - 1;
+    btnReplay.disabled = speaking || segments.length === 0;
+  }
+
+  function setActiveSegment(i) {
+    if (segSpans[currentSegIndex]) segSpans[currentSegIndex].classList.remove("active");
+    currentSegIndex = Math.max(0, Math.min(i, segments.length - 1));
+    if (segSpans[currentSegIndex]) segSpans[currentSegIndex].classList.add("active");
+    updatePlayerButtons();
+    // Keep active segment visible in scroll area
+    segSpans[currentSegIndex]?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+  }
+
+  function splitIntoSegments(text) {
+    const s = (text || "").replace(/\s+/g, " ").trim();
+    const re = /[^,;:.!?]+(?:[,;:.!?]+|$)/g;
+    const matches = s.match(re) || [];
+    return matches.map(x => x.trim()).filter(Boolean);
+  }
+
+  function renderSegmentWords(span, segText) {
+    const words = segText.split(/\s+/).filter(Boolean);
+    span.textContent = "";
+    words.forEach((w, idx) => {
+      const ws = document.createElement("span");
+      ws.className = "word " + (idx % 2 === 0 ? "w0" : "w1");
+      ws.textContent = w;
+      span.appendChild(ws);
+      if (idx < words.length - 1) span.appendChild(document.createTextNode(" "));
+    });
+  }
+
+  function stopSpeech() {
+    try { speechSynthesis.cancel(); } catch (_) {}
+    speaking = false;
+    updatePlayerButtons();
+  }
+
+  function makeUtterance(text) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-GB";
+    u.rate = 0.90;
+    return u;
+  }
+
+  function speakSegment(index) {
+    if (!segments.length) return;
+
+    stopSpeech();
+    setActiveSegment(index);
+
+    const segText = segments[currentSegIndex];
+    speaking = true;
+    setStatus(`${currentSegIndex + 1}/${segments.length}`);
+    showHint("Speaking…");
+    updatePlayerButtons();
+    updateTopButtonsForCurrentView();
+
+    const u = makeUtterance(segText);
+
+    u.onend = () => {
+      speaking = false;
+      setStatus("Ready");
+      updatePlayerButtons();
+      updateTopButtonsForCurrentView();
+    };
+    u.onerror = () => {
+      speaking = false;
+      setStatus("TTS error");
+      updatePlayerButtons();
+      updateTopButtonsForCurrentView();
+    };
+
+    speechSynthesis.speak(u);
+  }
+
+  function renderPlayer(verseText){
+    showPlayerUI();
+    verseEl.innerHTML = "";
+    segSpans = [];
+    segments = splitIntoSegments(verseText);
+
+    segments.forEach((seg, i) => {
+      const span = document.createElement("span");
+      span.className = "seg";
+      renderSegmentWords(span, seg);
+      span.addEventListener("click", () => speakSegment(i));
+      verseEl.appendChild(span);
+      verseEl.appendChild(document.createTextNode(" "));
+      segSpans.push(span);
+    });
+
+    currentSegIndex = 0;
+    segSpans[0]?.classList.add("active");
+    updatePlayerButtons();
+    updateTopButtonsForCurrentView();
+    setStatus("Ready");
+
+    // Ensure we start at the top
+    contentScroll.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  // Bottom controls (handlers bound later)
+
+  // Safety: stop speech when leaving
+  window.addEventListener("pagehide", stopSpeech);
+
+  // --- Navigation rendering ---
+  function goHome(){
+    if (!navRoot) return;
+    stopSpeech();
+    showNavUI();
+    setRef("Scriptures");
+    setStatus("Choose a work");
+    renderCrumbs([{label:"Scriptures", onClick: () => goHome()}]);
+    const works = navRoot?.scriptures?.works || [];
+    renderCards(works.map((w, idx) => ({
+      title: w.title,
+      sub: "Work",
+      onClick: () => openWork(idx)
+    })));
+    pushState({view:"home"});
+  }
+
+  function openWork(workIndex){
+    stopSpeech();
+    showNavUI();
+    const work = navRoot.scriptures.works[workIndex];
+    setRef(work.title);
+    setStatus("Choose a book");
+    renderCrumbs([
+      {label:"Scriptures", onClick: () => goHome()},
+      {label: work.title, onClick: () => openWork(workIndex)}
+    ]);
+    const books = work.books || [];
+    renderCards(books.map((b, bookIndex) => ({
+      title: b.title,
+      sub: `${(b.segments?.length || 0)} chapter(s)`,
+      onClick: () => openBook(workIndex, bookIndex)
+    })));
+    pushState({view:"work", workIndex});
+  }
+
+  function openBook(workIndex, bookIndex){
+    stopSpeech();
+    showNavUI();
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    setRef(`${book.title}`);
+    setStatus("Choose a chapter");
+    renderCrumbs([
+      {label:"Scriptures", onClick: () => goHome()},
+      {label: work.title, onClick: () => openWork(workIndex)},
+      {label: book.title, onClick: () => openBook(workIndex, bookIndex)}
+    ]);
+    const segs = book.segments || [];
+    renderCards(segs.map((s, segmentIndex) => ({
+      title: s.title,
+      sub: "Chapter",
+      onClick: () => openChapter(workIndex, bookIndex, segmentIndex)
+    })));
+    pushState({view:"book", workIndex, bookIndex});
+  }
+
+  async function openChapter(workIndex, bookIndex, segmentIndex){
+    stopSpeech();
+    showNavUI();
+
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    const seg = book.segments[segmentIndex];
+    const url = normalizeHref(seg.href);
+
+    setRef(`${book.title}`);
+    setStatus(`Loading ${seg.title}…`);
+
+    renderCrumbs([
+      {label:"Scriptures", onClick: () => goHome()},
+      {label: work.title, onClick: () => openWork(workIndex)},
+      {label: book.title, onClick: () => openBook(workIndex, bookIndex)},
+      {label: seg.title, onClick: () => openChapter(workIndex, bookIndex, segmentIndex)}
+    ]);
+
+    try{
+      const ch = await fetchJson(url);
+      const verses = ch.verses || [];
+      setStatus(`Choose a verse (${verses.length})`);
+      renderCards(verses.map((v, verseIndex) => {
+        const text = (v.text || "").trim();
+        const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
+        return {
+          title: `${seg.title}:${verseIndex + 1}`,
+          sub: preview,
+          onClick: () => openPlayer(workIndex, bookIndex, segmentIndex, verseIndex, ch)
+        };
+      }));
+      pushState({view:"chapter", workIndex, bookIndex, segmentIndex});
+    }catch(err){
+      setStatus("Failed to load chapter");
+      renderCards([{
+        title: "Could not load JSON",
+        sub: String(err?.message || err),
+        onClick: () => openBook(workIndex, bookIndex)
+      }]);
+    }
+  }
+
+  function openPlayer(workIndex, bookIndex, segmentIndex, verseIndex, chapterJson){
+    stopSpeech();
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    const seg = book.segments[segmentIndex];
+
+    const verseObj = (chapterJson.verses || [])[verseIndex] || {};
+    const verseText = verseObj.text || "";
+
+    setRef(`${book.title} • ${seg.title}:${verseIndex + 1}`);
+    setStatus("Ready");
+
+    renderPlayer(verseText);
+
+    // Put a back target in the stack so Back works out of player
+    pushState({view:"player", workIndex, bookIndex, segmentIndex, verseIndex});
+  }
+
+  function restoreState(state){
+    // Restore without pushing new state
+    if (!state || !navRoot) return;
+
+    const {view} = state;
+
+    if (view === "home") return goHomeNoPush();
+    if (view === "work") return openWorkNoPush(state.workIndex);
+    if (view === "book") return openBookNoPush(state.workIndex, state.bookIndex);
+    if (view === "chapter") return openChapterNoPush(state.workIndex, state.bookIndex, state.segmentIndex);
+    if (view === "player") return openPlayerFromStateNoPush(state);
+  }
+
+  function goHomeNoPush(){
+    stopSpeech();
+    showNavUI();
+    setRef("Scriptures");
+    setStatus("Choose a work");
+    renderCrumbs([{label:"Scriptures", onClick: () => goHome()}]);
+    const works = navRoot?.scriptures?.works || [];
+    renderCards(works.map((w, idx) => ({
+      title: w.title,
+      sub: "Work",
+      onClick: () => openWork(idx)
+    })));
+  }
+
+  function openWorkNoPush(workIndex){
+    stopSpeech();
+    showNavUI();
+    const work = navRoot.scriptures.works[workIndex];
+    setRef(work.title);
+    setStatus("Choose a book");
+    renderCrumbs([
+      {label:"Scriptures", onClick: () => goHome()},
+      {label: work.title, onClick: () => openWork(workIndex)}
+    ]);
+    const books = work.books || [];
+    renderCards(books.map((b, bookIndex) => ({
+      title: b.title,
+      sub: `${(b.segments?.length || 0)} chapter(s)`,
+      onClick: () => openBook(workIndex, bookIndex)
+    })));
+  }
+
+  function openBookNoPush(workIndex, bookIndex){
+    stopSpeech();
+    showNavUI();
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    setRef(`${book.title}`);
+    setStatus("Choose a chapter");
+    renderCrumbs([
+      {label:"Scriptures", onClick: () => goHome()},
+      {label: work.title, onClick: () => openWork(workIndex)},
+      {label: book.title, onClick: () => openBook(workIndex, bookIndex)}
+    ]);
+    const segs = book.segments || [];
+    renderCards(segs.map((s, segmentIndex) => ({
+      title: s.title,
+      sub: "Chapter",
+      onClick: () => openChapter(workIndex, bookIndex, segmentIndex)
+    })));
+  }
+
+  async function openChapterNoPush(workIndex, bookIndex, segmentIndex){
+    stopSpeech();
+    showNavUI();
+
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    const seg = book.segments[segmentIndex];
+    const url = normalizeHref(seg.href);
+
+    setRef(`${book.title}`);
+    setStatus(`Loading ${seg.title}…`);
+
+    renderCrumbs([
+      {label:"Scriptures", onClick: () => goHome()},
+      {label: work.title, onClick: () => openWork(workIndex)},
+      {label: book.title, onClick: () => openBook(workIndex, bookIndex)},
+      {label: seg.title, onClick: () => openChapter(workIndex, bookIndex, segmentIndex)}
+    ]);
+
+    try{
+      const ch = await fetchJson(url);
+      const verses = ch.verses || [];
+      setStatus(`Choose a verse (${verses.length})`);
+      renderCards(verses.map((v, verseIndex) => {
+        const text = (v.text || "").trim();
+        const preview = text.length > 80 ? text.slice(0, 80) + "…" : text;
+        return {
+          title: `${seg.title}:${verseIndex + 1}`,
+          sub: preview,
+          onClick: () => openPlayer(workIndex, bookIndex, segmentIndex, verseIndex, ch)
+        };
+      }));
+    }catch(err){
+      setStatus("Failed to load chapter");
+      renderCards([{
+        title: "Could not load JSON",
+        sub: String(err?.message || err),
+        onClick: () => openBook(workIndex, bookIndex)
+      }]);
+    }
+  }
+
+  async function openPlayerFromStateNoPush(state){
+    // Re-fetch chapter JSON (cached) then render specific verse
+    const {workIndex, bookIndex, segmentIndex, verseIndex} = state;
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    const seg = book.segments[segmentIndex];
+    const url = normalizeHref(seg.href);
+
+    setRef(`${book.title} • ${seg.title}:${verseIndex + 1}`);
+    setStatus("Loading verse…");
+    showPlayerUI();
+
+    try{
+      const ch = await fetchJson(url);
+      const verseObj = (ch.verses || [])[verseIndex] || {};
+      renderPlayer(verseObj.text || "");
+    }catch(err){
+      // If loading fails, bounce back to chapter list
+      await openChapterNoPush(workIndex, bookIndex, segmentIndex);
+      setStatus("Failed to load verse");
+    }
+  }
+
+
+  // ===== Unified button handlers =====
+  // Bottom bar = phrase/segment navigation
+  btnPrev.onclick = () => speakSegment(currentSegIndex - 1);
+  btnReplay.onclick = () => speakSegment(currentSegIndex);
+  btnNext.onclick = () => speakSegment(currentSegIndex + 1);
+
+  // Top bar: ◀/▶ = verse navigation when in player, otherwise history; ▲ = up one level
+  btnBack.onclick = () => {
+    if (verseEl.style.display !== "none" && currentChapterJson) moveVerse(-1);
+    else if (canBack()) { historyIndex--; restoreState(historyStack[historyIndex]); updateNavButtons(); }
+  };
+
+  btnForward.onclick = () => {
+    if (verseEl.style.display !== "none" && currentChapterJson) moveVerse(1);
+    else if (canForward()) { historyIndex++; restoreState(historyStack[historyIndex]); updateNavButtons(); }
+  };
+
+  btnHome.onclick = async () => {
+    if (!navRoot) return;
+
+    // In player view → go back to chapter list
+    if (verseEl.style.display !== "none" && currentChapterMeta) {
+      const {workIndex, bookIndex, segmentIndex} = currentChapterMeta;
+      await openChapterNoPush(workIndex, bookIndex, segmentIndex);
+      pushState({view:"chapter", workIndex, bookIndex, segmentIndex});
+      updateTopButtonsForCurrentView();
+      return;
+    }
+
+    // Determine current state from history
+    const state = historyStack[historyIndex];
+    if (!state) return;
+
+    if (state.view === "chapter") {
+      openBookNoPush(state.workIndex, state.bookIndex);
+      pushState({view:"book", workIndex:state.workIndex, bookIndex:state.bookIndex});
+    } 
+    else if (state.view === "book") {
+      openWorkNoPush(state.workIndex);
+      pushState({view:"work", workIndex:state.workIndex});
+    }
+    else if (state.view === "work") {
+      goHomeNoPush();
+      pushState({view:"home"});
+    }
+    updateTopButtonsForCurrentView();
+  };
+
+  // --- Init ---
+  async function init(){
+    updateNavButtons();
+
+    // NOTE:
+    // If you open this file directly with file://, fetch() will usually be blocked.
+    // Run via a local server (python -m http.server) or as a PWA to load JSON.
+    try{
+      navRoot = await fetchJson("nav.json");
+      setStatus("Choose a work");
+      goHome();
+    }catch(err){
+      setStatus("Could not load nav.json");
+      showNavUI();
+      renderCrumbs([{label:"Scriptures"}]);
+      renderCards([{
+        title: "nav.json not found / blocked",
+        sub: "Tip: serve this folder over HTTP (e.g., python -m http.server) so fetch() can read nav.json.",
+        onClick: () => {}
+      },{
+        title: "Error details",
+        sub: String(err?.message || err),
+        onClick: () => {}
+      }]);
+      pushState({view:"home"});
+    }
+
+    if (typeof speechSynthesis === "undefined") {
+      setStatus("No TTS");
+      btnPrev.disabled = btnReplay.disabled = btnNext.disabled = true;
+    }
+  }
+
+
+  // ===== VERSE-LEVEL NAVIGATION ADDITION =====
+  let currentChapterJson = null;
+  let currentVerseIndex = 0;
+  let currentChapterMeta = null; // {workIndex, bookIndex, segmentIndex}
+
+  function openPlayer(workIndex, bookIndex, segmentIndex, verseIndex, chapterJson){
+    stopSpeech();
+
+    const work = navRoot.scriptures.works[workIndex];
+    const book = work.books[bookIndex];
+    const seg = book.segments[segmentIndex];
+
+    currentChapterJson = chapterJson;
+    currentVerseIndex = verseIndex;
+    currentChapterMeta = {workIndex, bookIndex, segmentIndex};
+    updateTopButtonsForCurrentView();
+
+    const verseObj = (chapterJson.verses || [])[verseIndex] || {};
+    const verseText = verseObj.text || "";
+
+    setRef(`${book.title} • ${seg.title}:${verseIndex + 1}`);
+    setStatus("Ready");
+
+    renderPlayer(verseText);
+
+    pushState({view:"player", workIndex, bookIndex, segmentIndex, verseIndex});
+  }
+
+  function moveVerse(delta){
+    if (!currentChapterJson) return;
+
+    const verses = currentChapterJson.verses || [];
+    const newIndex = currentVerseIndex + delta;
+
+    if (newIndex < 0 || newIndex >= verses.length) return;
+
+    const {workIndex, bookIndex, segmentIndex} = currentChapterMeta;
+    openPlayer(workIndex, bookIndex, segmentIndex, newIndex, currentChapterJson);
+  }
+
+  // Override bottom controls in player mode
+  btnPrev.onclick = () => {
+    if (verseEl.style.display !== "none") {
+      moveVerse(-1);
+    } else {
+      speakSegment(currentSegIndex - 1);
+    }
+  };
+
+  btnNext.onclick = () => {
+    if (verseEl.style.display !== "none") {
+      moveVerse(1);
+    } else {
+      speakSegment(currentSegIndex + 1);
+    }
+  };
+
+  btnReplay.onclick = () => {
+    speakSegment(currentSegIndex);
+  };
+
+  // Optional: swipe support
+  let touchStartX = 0;
+  verseEl.addEventListener("touchstart", (e) => {
+    touchStartX = e.changedTouches[0].clientX;
+  });
+
+  verseEl.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) {
+      if (dx < 0) moveVerse(1);
+      else moveVerse(-1);
+    }
+  });
+
+
+  // ===== FIX: TOP buttons = verse navigation, BOTTOM = segment navigation =====
+
+  // Restore bottom buttons to segment behavior
+  btnPrev.onclick = () => speakSegment(currentSegIndex - 1);
+  btnNext.onclick = () => speakSegment(currentSegIndex + 1);
+  btnReplay.onclick = () => speakSegment(currentSegIndex);
+
+  // Override TOP navigation when in player view
+  btnBack.onclick = () => {
+    if (verseEl.style.display !== "none" && currentChapterJson) {
+      moveVerse(-1);
+    } else if (canBack()) {
+      historyIndex--;
+      restoreState(historyStack[historyIndex]);
+      updateNavButtons();
+    }
+  };
+
+  btnForward.onclick = () => {
+    if (verseEl.style.display !== "none" && currentChapterJson) {
+      moveVerse(1);
+    } else if (canForward()) {
+      historyIndex++;
+      restoreState(historyStack[historyIndex]);
+      updateNavButtons();
+    }
+  };
+
+
+  // ===== CHANGE: ▲ button = go UP one navigation level =====
+
+  btnHome.onclick = async () => {
+    if (!navRoot) return;
+
+    // If in player view → go back to chapter list
+    if (verseEl.style.display !== "none" && currentChapterMeta) {
+      const {workIndex, bookIndex, segmentIndex} = currentChapterMeta;
+      await openChapterNoPush(workIndex, bookIndex, segmentIndex);
+      pushState({view:"chapter", workIndex, bookIndex, segmentIndex});
+      return;
+    }
+
+    // Determine current state from history
+    const state = historyStack[historyIndex];
+    if (!state) return;
+
+    if (state.view === "chapter") {
+      openBookNoPush(state.workIndex, state.bookIndex);
+      pushState({view:"book", workIndex:state.workIndex, bookIndex:state.bookIndex});
+    } 
+    else if (state.view === "book") {
+      openWorkNoPush(state.workIndex);
+      pushState({view:"work", workIndex:state.workIndex});
+    }
+    else if (state.view === "work") {
+      goHomeNoPush();
+      pushState({view:"home"});
+    }
+  };
+
+  init();
+</script>
+</body>
+</html>
