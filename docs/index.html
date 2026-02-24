@@ -189,6 +189,112 @@
       .hint{transition:none}
       .card:active{transform:none}
     }
+
+    .playBtn{
+      color: #38d46b;
+      border-color: rgba(56,212,107,.35);
+    }
+    .playBtn:hover{
+      background: rgba(56,212,107,.12);
+    }
+
+    .gearBtn{
+      position: fixed;
+      right: 16px;
+      bottom: calc(84px + 16px); /* above bottom bar */
+      display:none;
+      width:48px;height:48px;
+      border-radius: 16px;
+      font-size: 20px;
+      z-index: 80;
+      box-shadow: 0 10px 30px rgba(0,0,0,.45);
+    }
+
+
+    .modalBack{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.62);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+      z-index: 60;
+    }
+    .modalBack.show{display:flex;}
+    .sheet{
+      width:min(680px, 100%);
+      background: rgba(11,15,20,.98);
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 20px;
+      padding: 14px 14px 16px 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.55);
+    }
+    .sheetHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      margin-bottom: 10px;
+    }
+    .sheetTitle{font-weight: 850; font-size: 16px;}
+    .sheetClose{width:40px;height:40px;border-radius:14px;}
+    .form{display:flex;flex-direction:column;gap:14px;}
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 10px;
+      align-items:center;
+    }
+    .row label{color: var(--muted);font-size: 13px;line-height: 1.25;}
+    .ctl{
+      width:100%;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--fg);
+      border-radius: 12px;
+      padding: 10px 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .ctl:focus{ border-color: rgba(255,255,255,.26); }
+    input[type="range"].ctl{
+      padding: 6px 10px;
+      height: 40px;
+      background: rgba(255,255,255,.04);
+    }
+    /* Dark select styling (non-iOS browsers) */
+    select.ctl {
+      background-color: rgba(255,255,255,.06);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.14);
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+    }
+
+    /* Dropdown options (works on Chrome/Android/Desktop) */
+    select.ctl option {
+      background-color: #0b0f14;
+      color: #fff;
+    }
+    .two{display:grid;grid-template-columns: 1fr 1fr;gap: 10px;align-items:center;}
+    .help{color: rgba(255,255,255,.55);font-size: 12px;line-height: 1.35;margin-top: 6px;}
+
+    @media (max-width: 420px){
+      .row{
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .row label{
+        font-size: 12px;
+      }
+      .sheet{
+        padding: 12px 12px 14px 12px;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -210,12 +316,15 @@
       <div class="chips" id="crumbs" style="display:none"></div>
       <div class="list" id="list"></div>
       <div class="verse" id="verse" style="display:none"></div>
+
+      <button class="iconbtn gearBtn" id="btnGear" title="Settings" aria-label="Settings">⚙</button>
+
     </div>
   </div>
 
   <div class="bottombar" id="bottombar" aria-label="Player controls" style="display:none">
     <button class="iconbtn navbtn" id="btnPrevSeg" title="Previous phrase" aria-label="Previous phrase">◀</button>
-    <button class="iconbtn navbtn" id="btnReplaySeg" title="Replay phrase" aria-label="Replay phrase">⟲</button>
+    <button class="iconbtn navbtn playBtn" id="btnReplaySeg" title="Play" aria-label="Play">▶</button>
     <button class="iconbtn navbtn" id="btnNextSeg" title="Next phrase" aria-label="Next phrase">▶</button>
   </div>
 </div>
@@ -228,6 +337,62 @@
     <div class="s">This app is designed for portrait mode for easier reading.</div>
   </div>
 </div>
+
+
+<div class="modalBack" id="modalBack" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="sheetHeader">
+      <div class="sheetTitle">Player settings</div>
+      <button class="iconbtn sheetClose" id="btnCloseSettings" aria-label="Close">✕</button>
+    </div>
+
+    <div class="form">
+      <div class="row">
+        <label for="speed">Play speed</label>
+        <div>
+          <input class="ctl" id="speed" type="range" min="0.5" max="1.5" step="0.05" />
+          <div class="help" id="speedVal"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="fontSize">Font size</label>
+        <div>
+          <input class="ctl" id="fontSize" type="range" min="18" max="54" step="1" />
+          <div class="help" id="fontVal"></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="maxWords">Max words per phrase</label>
+        <div>
+          <input class="ctl" id="maxWords" type="number" min="0" max="40" step="1" inputmode="numeric" />
+          <div class="help">0 = auto by punctuation. Any number will split long phrases into chunks.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="hlColor">Highlight color</label>
+        <div class="two">
+          <input class="ctl" id="hlColor" type="color" />
+          <select class="ctl" id="hlStyle">
+            <option value="soft">Soft</option>
+            <option value="bold">Bold</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <label for="voice">TTS voice</label>
+        <div>
+          <select class="ctl" id="voice"></select>
+          <div class="help" id="voiceHelp">Voices load from your device/browser.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 (() => {
@@ -257,6 +422,93 @@
   const btnReplaySeg = document.getElementById("btnReplaySeg");
   const btnNextSeg = document.getElementById("btnNextSeg");
 
+  const btnGear = document.getElementById("btnGear");
+  const modalBack = document.getElementById("modalBack");
+  const btnCloseSettings = document.getElementById("btnCloseSettings");
+
+  const ctlSpeed = document.getElementById("speed");
+  const ctlSpeedVal = document.getElementById("speedVal");
+  const ctlFont = document.getElementById("fontSize");
+  const ctlFontVal = document.getElementById("fontVal");
+  const ctlMaxWords = document.getElementById("maxWords");
+  const ctlHlColor = document.getElementById("hlColor");
+  const ctlHlStyle = document.getElementById("hlStyle");
+  const ctlVoice = document.getElementById("voice");
+  const ctlVoiceHelp = document.getElementById("voiceHelp");
+
+  // ---- Preferences (player) ----
+  const PREFS_KEY = "glr_prefs_v1";
+  const Prefs = {
+    rate: 0.90,
+    fontPx: null,
+    maxWords: 0,
+    hlColor: "#ffe27a",
+    hlStyle: "soft",
+    voiceURI: ""
+  };
+
+  function savePrefs(){
+    try{ localStorage.setItem(PREFS_KEY, JSON.stringify(Prefs)); }catch(_){}
+  }
+  function loadPrefs(){
+    try{
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return;
+      if (typeof data.rate === "number") Prefs.rate = Math.min(1.5, Math.max(0.5, data.rate));
+      if (typeof data.fontPx === "number" || data.fontPx === null) Prefs.fontPx = data.fontPx;
+      if (typeof data.maxWords === "number") Prefs.maxWords = Math.min(40, Math.max(0, Math.floor(data.maxWords)));
+      if (typeof data.hlColor === "string") Prefs.hlColor = data.hlColor;
+      if (typeof data.hlStyle === "string") Prefs.hlStyle = data.hlStyle;
+      if (typeof data.voiceURI === "string") Prefs.voiceURI = data.voiceURI;
+    }catch(_){}
+  }
+
+  function hexToRgba(hex, alpha){
+    try{
+      const h = (hex || "").replace("#","").trim();
+      if (h.length !== 6) return null;
+      const r = parseInt(h.slice(0,2),16);
+      const g = parseInt(h.slice(2,4),16);
+      const b = parseInt(h.slice(4,6),16);
+      if ([r,g,b].some(n => Number.isNaN(n))) return null;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }catch(_){ return null; }
+  }
+
+  function applyPrefs(){
+    if (Prefs.fontPx && Prefs.fontPx > 0) verseEl.style.fontSize = Prefs.fontPx + "px";
+    else verseEl.style.fontSize = "";
+
+    document.documentElement.style.setProperty("--hl", Prefs.hlColor);
+    const bg = hexToRgba(Prefs.hlColor, Prefs.hlStyle === "bold" ? 0.28 : 0.16) || "rgba(255,226,122,.18)";
+    document.documentElement.style.setProperty("--hlBg", bg);
+
+    ctlSpeed.value = String(Prefs.rate);
+    ctlSpeedVal.textContent = `${Prefs.rate.toFixed(2)}x`;
+    ctlFont.value = String(Prefs.fontPx ?? 32);
+    ctlFontVal.textContent = Prefs.fontPx ? `${Prefs.fontPx}px` : "Auto";
+    ctlMaxWords.value = String(Prefs.maxWords);
+    ctlHlColor.value = Prefs.hlColor;
+    ctlHlStyle.value = Prefs.hlStyle;
+  }
+
+  function openSettings(){
+    modalBack.classList.add("show");
+    modalBack.setAttribute("aria-hidden","false");
+    // Hide gear while sheet is open so it doesn't overlap controls
+    btnGear.style.display = "none";
+    applyPrefs();
+  }
+  function closeSettings(){
+    modalBack.classList.remove("show");
+    modalBack.setAttribute("aria-hidden","true");
+    // Restore gear only if we're still in player view
+    btnGear.style.display = (verseEl.style.display !== "none") ? "flex" : "none";
+  }
+
+
   const UI = {
     setRef: (title, cv="") => { refTitleEl.textContent = title; refCVEl.textContent = cv; },
     setStatus: (t) => statusEl.textContent = t,
@@ -271,12 +523,14 @@
       crumbsEl.style.display = "";
       verseEl.style.display = "none";
       bottombarEl.style.display = "none";
+      btnGear.style.display = "none";
     },
     showPlayer: () => {
       listEl.style.display = "none";
       crumbsEl.style.display = "none";
       verseEl.style.display = "";
       bottombarEl.style.display = "";
+      btnGear.style.display = "flex";
     },
     resetScroll: () => contentScroll.scrollTo({top:0, behavior:"instant"})
   };
@@ -435,9 +689,26 @@
   // ---- Player (segments + TTS) ----
   function splitIntoSegments(text){
     const s = (text || "").replace(/\s+/g, " ").trim();
+    if (!s) return [];
+
     const re = /[^,;:.!?]+(?:[,;:.!?]+|$)/g;
-    const matches = s.match(re) || [];
-    return matches.map(x => x.trim()).filter(Boolean);
+    const base = (s.match(re) || []).map(x => x.trim()).filter(Boolean);
+
+    const maxW = Prefs.maxWords || 0;
+    if (maxW <= 0) return base;
+
+    const out = [];
+    for (const seg of base){
+      const words = seg.split(/\s+/).filter(Boolean);
+      if (words.length <= maxW){
+        out.push(seg);
+        continue;
+      }
+      for (let i = 0; i < words.length; i += maxW){
+        out.push(words.slice(i, i + maxW).join(" "));
+      }
+    }
+    return out;
   }
 
   function renderSegmentWords(span, segText){
@@ -462,7 +733,10 @@
   function makeUtterance(text){
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-GB";
-    u.rate = 0.90;
+    u.rate = Prefs.rate;
+    const voices = speechSynthesis.getVoices?.() || [];
+    const v = voices.find(x => x.voiceURI === Prefs.voiceURI) || null;
+    if (v) u.voice = v;
     return u;
   }
 
@@ -524,6 +798,15 @@
     updateBottomButtons();
     UI.setStatus("Ready");
     UI.resetScroll();
+  }
+
+  function rerenderCurrentVerse(){
+    if (!isPlayerView() || !App.chapterJson) return;
+    const verses = App.chapterJson.verses || [];
+    const v = verses[App.verseIndex] || {};
+    renderPlayerText(v.text || "");
+    updateTopButtons();
+    savePrefs();
   }
 
   function updateBottomButtons(){
@@ -774,6 +1057,86 @@
   }
 
   // ---- Event handlers ----
+
+  // ---- Settings UI ----
+  btnGear.onclick = () => openSettings();
+  btnCloseSettings.onclick = () => closeSettings();
+  modalBack.addEventListener("click", (e) => { if (e.target === modalBack) closeSettings(); });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape" && modalBack.classList.contains("show")) closeSettings(); });
+
+  function populateVoices(){
+    const voices = speechSynthesis.getVoices?.() || [];
+    ctlVoice.innerHTML = "";
+    if (!voices.length){
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No voices available";
+      ctlVoice.appendChild(opt);
+      ctlVoice.disabled = true;
+      ctlVoiceHelp.textContent = "Your browser hasn't provided voices yet.";
+      return;
+    }
+    ctlVoice.disabled = false;
+    ctlVoiceHelp.textContent = `${voices.length} voice(s) available`;
+
+    const preferred = Prefs.voiceURI;
+    for (const v of voices){
+      const opt = document.createElement("option");
+      opt.value = v.voiceURI;
+      opt.textContent = `${v.name} (${v.lang})${v.default ? " • default" : ""}`;
+      ctlVoice.appendChild(opt);
+    }
+    if (preferred && voices.some(v => v.voiceURI === preferred)){
+      ctlVoice.value = preferred;
+    } else {
+      const def = voices.find(v => v.default) || voices[0];
+      Prefs.voiceURI = def?.voiceURI || "";
+      ctlVoice.value = Prefs.voiceURI;
+      savePrefs();
+    }
+  }
+
+  if (typeof speechSynthesis !== "undefined"){
+    speechSynthesis.onvoiceschanged = () => populateVoices();
+  }
+
+  ctlSpeed.addEventListener("input", () => {
+    Prefs.rate = Number(ctlSpeed.value) || Prefs.rate;
+    ctlSpeedVal.textContent = `${Prefs.rate.toFixed(2)}x`;
+    savePrefs();
+  });
+
+  ctlFont.addEventListener("input", () => {
+    const val = Number(ctlFont.value);
+    if (val <= 18){ Prefs.fontPx = null; ctlFontVal.textContent = "Auto"; }
+    else { Prefs.fontPx = val; ctlFontVal.textContent = `${val}px`; }
+    applyPrefs();
+    rerenderCurrentVerse();
+  });
+
+  ctlMaxWords.addEventListener("change", () => {
+    Prefs.maxWords = Math.min(40, Math.max(0, Math.floor(Number(ctlMaxWords.value) || 0)));
+    ctlMaxWords.value = String(Prefs.maxWords);
+    rerenderCurrentVerse();
+  });
+
+  ctlHlColor.addEventListener("input", () => {
+    Prefs.hlColor = ctlHlColor.value || Prefs.hlColor;
+    applyPrefs();
+    savePrefs();
+  });
+
+  ctlHlStyle.addEventListener("change", () => {
+    Prefs.hlStyle = ctlHlStyle.value || "soft";
+    applyPrefs();
+    savePrefs();
+  });
+
+  ctlVoice.addEventListener("change", () => {
+    Prefs.voiceURI = ctlVoice.value || "";
+    savePrefs();
+  });
+
   btnPrevSeg.onclick = () => speakSegment(App.segIndex - 1);
   btnReplaySeg.onclick = () => speakSegment(App.segIndex);
   btnNextSeg.onclick = () => speakSegment(App.segIndex + 1);
@@ -806,6 +1169,10 @@
 
   // ---- Init ----
   async function init(){
+    loadPrefs();
+    applyPrefs();
+    if (typeof speechSynthesis !== "undefined") populateVoices();
+
     updateTopButtons();
     if (typeof speechSynthesis === "undefined"){
       UI.setStatus("No TTS");
