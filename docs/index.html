@@ -1089,8 +1089,21 @@
     if (preferred && voices.some(v => v.voiceURI === preferred)){
       ctlVoice.value = preferred;
     } else {
-      const def = voices.find(v => v.default) || voices[0];
-      Prefs.voiceURI = def?.voiceURI || "";
+      if (preferred && voices.some(v => v.voiceURI === preferred)) {
+        ctlVoice.value = preferred;
+      } else {
+        // Prefer en-US voice
+        const enUS = voices.find(v => v.lang.replace("_","-") === "en-US");
+        const fallback =
+          enUS ||
+          voices.find(v => v.lang.startsWith("en-")) ||
+          voices.find(v => v.default) ||
+          voices[0];
+
+        Prefs.voiceURI = fallback?.voiceURI || "";
+        ctlVoice.value = Prefs.voiceURI;
+        savePrefs();
+      }
       ctlVoice.value = Prefs.voiceURI;
       savePrefs();
     }
