@@ -282,6 +282,35 @@
     .two{display:grid;grid-template-columns: 1fr 1fr;gap: 10px;align-items:center;}
     .help{color: rgba(255,255,255,.55);font-size: 12px;line-height: 1.35;margin-top: 6px;}
 
+    /* Make highlight color picker swatch obvious */
+    #hlColor{
+      height: 44px;
+      padding: 4px;
+      border-radius: 14px;
+      background: transparent;
+    }
+    #hlColor::-webkit-color-swatch-wrapper{ padding: 0; }
+    #hlColor::-webkit-color-swatch{
+      border-radius: 10px;
+      border: 2px solid rgba(255,255,255,.25);
+    }
+    #hlColor::-moz-color-swatch{
+      border-radius: 10px;
+      border: 2px solid rgba(255,255,255,.25);
+    }
+
+    /* Live preview chip */
+    .hlPreview{
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      user-select:none;
+    }
+
+
     @media (max-width: 420px){
       .row{
         grid-template-columns: 1fr;
@@ -485,6 +514,16 @@
     const bg = hexToRgba(Prefs.hlColor, Prefs.hlStyle === "bold" ? 0.28 : 0.16) || "rgba(255,226,122,.18)";
     document.documentElement.style.setProperty("--hlBg", bg);
 
+
+    const preview = document.getElementById("hlPreview");
+    if (preview){
+      const pbg = hexToRgba(Prefs.hlColor, Prefs.hlStyle === "bold" ? 0.35 : 0.18) || bg;
+      preview.style.background = pbg;
+      preview.style.color = Prefs.hlColor;
+      preview.style.outline = `2px solid ${hexToRgba(Prefs.hlColor, 0.35) || "rgba(255,255,255,.12)"}`;
+      preview.style.outlineOffset = "1px";
+    }
+
     ctlSpeed.value = String(Prefs.rate);
     ctlSpeedVal.textContent = `${Prefs.rate.toFixed(2)}x`;
     ctlFont.value = String(Prefs.fontPx ?? 32);
@@ -507,6 +546,43 @@
     // Restore gear only if we're still in player view
     btnGear.style.display = (verseEl.style.display !== "none") ? "flex" : "none";
   }
+
+  // ---- Voice cache (fixes saved voice not being applied) ----
+  let VOICES = [];
+
+  function refreshVoices(){
+    try{
+      VOICES = speechSynthesis.getVoices?.() || [];
+    }catch(_){
+      VOICES = [];
+    }
+    return VOICES;
+  }
+
+  function pickVoice(){
+    if (!VOICES.length) refreshVoices();
+
+    const want = Prefs.voiceURI;
+    if (want){
+      const exact = VOICES.find(v => v.voiceURI === want);
+      if (exact) return exact;
+
+      // Some browsers change voiceURI across sessions; try a looser match
+      const loose = VOICES.find(v => (v.voiceURI || "").includes(want) || (want || "").includes(v.voiceURI));
+      if (loose) return loose;
+    }
+
+    const enUS = VOICES.find(v => (v.lang || "").replace("_","-") === "en-US");
+    const fallback =
+      enUS ||
+      VOICES.find(v => (v.lang || "").startsWith("en-")) ||
+      VOICES.find(v => v.default) ||
+      VOICES[0] ||
+      null;
+
+    return fallback;
+  }
+
 
 
   const UI = {
@@ -732,11 +808,12 @@
 
   function makeUtterance(text){
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = "en-GB";
+    u.lang = "en-US";
     u.rate = Prefs.rate;
-    const voices = speechSynthesis.getVoices?.() || [];
-    const v = voices.find(x => x.voiceURI === Prefs.voiceURI) || null;
+
+    const v = pickVoice();
     if (v) u.voice = v;
+
     return u;
   }
 
@@ -760,6 +837,7 @@
     updateTopButtons();
     updateBottomButtons();
 
+    refreshVoices();
     const u = makeUtterance(segText);
     u.onend = () => {
       App.speaking = false;
@@ -1065,7 +1143,7 @@
   window.addEventListener("keydown", (e) => { if (e.key === "Escape" && modalBack.classList.contains("show")) closeSettings(); });
 
   function populateVoices(){
-    const voices = speechSynthesis.getVoices?.() || [];
+    const voices = refreshVoices();
     ctlVoice.innerHTML = "";
     if (!voices.length){
       const opt = document.createElement("option");
@@ -1110,7 +1188,7 @@
   }
 
   if (typeof speechSynthesis !== "undefined"){
-    speechSynthesis.onvoiceschanged = () => populateVoices();
+    speechSynthesis.onvoiceschanged = () => { refreshVoices(); populateVoices(); };
   }
 
   ctlSpeed.addEventListener("input", () => {
@@ -1184,7 +1262,7 @@
   async function init(){
     loadPrefs();
     applyPrefs();
-    if (typeof speechSynthesis !== "undefined") populateVoices();
+    if (typeof speechSynthesis !== "undefined"){ refreshVoices(); populateVoices(); }
 
     updateTopButtons();
     if (typeof speechSynthesis === "undefined"){
