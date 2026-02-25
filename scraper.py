@@ -107,7 +107,7 @@ for work in data['scriptures']['works']:
             }
             parsed = urlparse(segment['href'])
             app_path = f"{parsed.path}.json"
-            output_path = f"website/{app_path}"
+            output_path = f"docs/{app_path}"
             original_href = segment['href']
             segment['href'] = app_path
             if not Path(script_dir / output_path).exists():
@@ -115,12 +115,14 @@ for work in data['scriptures']['works']:
                 for el in driver.find_elements(By.XPATH, "//article//div[@class = 'body-block']/*"):
                     text = el.text
                     match = re.match(r"^\s*(\d+)\s+(.*)", text)
-                    verses.append({
-                        'text': match.group(2) if match else text
-                    })
-                directory = f"website/{os.path.dirname(segment['href'])}"
+                    verse_text = match.group(2) if match else text
+                    if verse_text:
+                        verses.append({
+                            'text': verse_text
+                        })
+                directory = f"docs/{os.path.dirname(segment['href'])}"
                 os.makedirs(directory, exist_ok=True)
                 write_file(output_path, json.dumps(segment_file, indent=2))
 
-write_file('website/nav.json', json.dumps(data, indent=2))
+write_file('docs/nav.json', json.dumps(data, indent=2))
 driver.quit()
