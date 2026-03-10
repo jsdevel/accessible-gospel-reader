@@ -280,6 +280,27 @@
       background-color: #0b0f14;
       color: #fff;
     }
+    .stepper{
+      display:grid;
+      grid-template-columns: 44px 1fr 44px;
+      gap:6px;
+      align-items:center;
+    }
+    .stepBtn{
+      appearance:none;
+      border:1px solid var(--btnBorder);
+      background:var(--btnBg);
+      color:var(--fg);
+      border-radius:12px;
+      height:44px;
+      font-size:20px;
+      font-weight:800;
+      cursor:pointer;
+      user-select:none;
+    }
+    .stepBtn:hover{background:var(--btnBgHover)}
+    .stepBtn:active{transform:translateY(.5px)}
+    .stepInput{text-align:center;font-weight:700;}
     .two{display:grid;grid-template-columns: 1fr 1fr;gap: 10px;align-items:center;}
     .help{color: rgba(255,255,255,.55);font-size: 12px;line-height: 1.35;margin-top: 6px;}
 
@@ -380,7 +401,11 @@
       <div class="row">
         <label for="speed">Play speed</label>
         <div>
-          <input class="ctl" id="speed" type="range" min="0.5" max="1.5" step="0.05" />
+          <div class="stepper">
+            <button class="stepBtn" id="speedMinus" type="button" aria-label="Decrease play speed">−</button>
+            <input class="ctl stepInput" id="speed" type="number" min="0.5" max="1.5" step="0.05" inputmode="decimal" />
+            <button class="stepBtn" id="speedPlus" type="button" aria-label="Increase play speed">+</button>
+          </div>
           <div class="help" id="speedVal"></div>
         </div>
       </div>
@@ -388,7 +413,11 @@
       <div class="row">
         <label for="fontSize">Font size</label>
         <div>
-          <input class="ctl" id="fontSize" type="range" min="18" max="54" step="1" />
+          <div class="stepper">
+            <button class="stepBtn" id="fontMinus" type="button" aria-label="Decrease font size">−</button>
+            <input class="ctl stepInput" id="fontSize" type="number" min="18" max="54" step="1" inputmode="numeric" />
+            <button class="stepBtn" id="fontPlus" type="button" aria-label="Increase font size">+</button>
+          </div>
           <div class="help" id="fontVal"></div>
         </div>
       </div>
@@ -396,7 +425,11 @@
       <div class="row">
         <label for="maxWords">Max words per phrase</label>
         <div>
-          <input class="ctl" id="maxWords" type="number" min="0" max="40" step="1" inputmode="numeric" />
+          <div class="stepper">
+            <button class="stepBtn" id="wordsMinus" type="button" aria-label="Decrease max words per phrase">−</button>
+            <input class="ctl stepInput" id="maxWords" type="number" min="0" max="40" step="1" inputmode="numeric" />
+            <button class="stepBtn" id="wordsPlus" type="button" aria-label="Increase max words per phrase">+</button>
+          </div>
           <div class="help">0 = auto by punctuation. Any number will split long phrases into chunks.</div>
         </div>
       </div>
@@ -465,6 +498,13 @@
   const ctlHlStyle = document.getElementById("hlStyle");
   const ctlVoice = document.getElementById("voice");
   const ctlVoiceHelp = document.getElementById("voiceHelp");
+
+  const btnSpeedMinus = document.getElementById("speedMinus");
+  const btnSpeedPlus = document.getElementById("speedPlus");
+  const btnFontMinus = document.getElementById("fontMinus");
+  const btnFontPlus = document.getElementById("fontPlus");
+  const btnWordsMinus = document.getElementById("wordsMinus");
+  const btnWordsPlus = document.getElementById("wordsPlus");
 
   // ---- Preferences (player) ----
   const PREFS_KEY = "glr_prefs_v1";
@@ -1204,25 +1244,42 @@
     speechSynthesis.onvoiceschanged = () => { refreshVoices(); populateVoices(); };
   }
 
-  ctlSpeed.addEventListener("input", () => {
-    Prefs.rate = Number(ctlSpeed.value) || Prefs.rate;
+  function clampNumber(value, min, max, fallback){
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function updateSpeedFromInput(){
+    Prefs.rate = clampNumber(ctlSpeed.value, 0.5, 1.5, Prefs.rate);
+    ctlSpeed.value = Prefs.rate.toFixed(2);
     ctlSpeedVal.textContent = `${Prefs.rate.toFixed(2)}x`;
     savePrefs();
-  });
+  }
 
-  ctlFont.addEventListener("input", () => {
-    const val = Number(ctlFont.value);
+  function updateFontFromInput(){
+    const val = Math.round(clampNumber(ctlFont.value, 18, 54, Prefs.fontPx ?? 32));
     if (val <= 18){ Prefs.fontPx = null; ctlFontVal.textContent = "Auto"; }
     else { Prefs.fontPx = val; ctlFontVal.textContent = `${val}px`; }
+    ctlFont.value = String(val);
     applyPrefs();
     rerenderCurrentVerse();
-  });
+  }
 
-  ctlMaxWords.addEventListener("change", () => {
+  function updateMaxWordsFromInput(){
     Prefs.maxWords = Math.min(40, Math.max(0, Math.floor(Number(ctlMaxWords.value) || 0)));
     ctlMaxWords.value = String(Prefs.maxWords);
     rerenderCurrentVerse();
-  });
+  }
+
+  ctlSpeed.addEventListener("input", updateSpeedFromInput);
+  ctlSpeed.addEventListener("change", updateSpeedFromInput);
+
+  ctlFont.addEventListener("input", updateFontFromInput);
+  ctlFont.addEventListener("change", updateFontFromInput);
+
+  ctlMaxWords.addEventListener("input", updateMaxWordsFromInput);
+  ctlMaxWords.addEventListener("change", updateMaxWordsFromInput);
 
   ctlHlColor.addEventListener("input", () => {
     Prefs.hlColor = ctlHlColor.value || Prefs.hlColor;
@@ -1240,6 +1297,13 @@
     Prefs.voiceURI = ctlVoice.value || "";
     savePrefs();
   });
+
+  btnSpeedMinus.onclick = () => { ctlSpeed.stepDown(); updateSpeedFromInput(); };
+  btnSpeedPlus.onclick = () => { ctlSpeed.stepUp(); updateSpeedFromInput(); };
+  btnFontMinus.onclick = () => { ctlFont.stepDown(); updateFontFromInput(); };
+  btnFontPlus.onclick = () => { ctlFont.stepUp(); updateFontFromInput(); };
+  btnWordsMinus.onclick = () => { ctlMaxWords.stepDown(); updateMaxWordsFromInput(); };
+  btnWordsPlus.onclick = () => { ctlMaxWords.stepUp(); updateMaxWordsFromInput(); };
 
   btnPrevSeg.onclick = () => speakSegment(App.segIndex - 1);
   btnReplaySeg.onclick = () => speakSegment(App.segIndex);
