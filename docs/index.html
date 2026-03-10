@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Gospel Library Reader (Nav + Player)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <title>Accessible Gospel Reader</title>
   <style>
     :root{
       --bg:#0b0f14; --fg:#eef2f7; --muted:#a9b4c0;
@@ -18,13 +18,13 @@
     }
 
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0}
+    html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;}
     body{
       background:var(--bg);
       color:var(--fg);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
       overflow:hidden;
-      touch-action: manipulation;
+      touch-action: none;
     }
 
     .app{height:100dvh;width:100vw;display:flex;flex-direction:column;}
@@ -86,6 +86,7 @@
       height:100%;
       overflow:auto;
       -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
       padding: 6px 4px 18px 4px;
       scrollbar-width: thin;
     }
@@ -763,8 +764,20 @@
   }
 
   // ---- Player (segments + TTS) ----
+
+  function sanitizeTextForSpeech(text){
+    return String(text || "")
+      // Drop pilcrow/paragraph symbols and other non-spoken formatting chars
+      .replace(/[¶⁋§￼�]/gu, " ")
+      // Drop invisible/control/private-use/surrogate characters
+      .replace(/[\p{C}]/gu, " ")
+      .replace(/[​-‍⁠﻿]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function splitIntoSegments(text){
-    const s = (text || "").replace(/\s+/g, " ").trim();
+    const s = sanitizeTextForSpeech(text);
     if (!s) return [];
 
     const re = /[^,;:.!?]+(?:[,;:.!?]+|$)/g;
@@ -1247,16 +1260,21 @@
   // Stop speech when leaving
   window.addEventListener("pagehide", stopSpeech);
 
-  // Optional swipe to change verses in player
-  let touchStartX = 0;
-  verseEl.addEventListener("touchstart", (e) => { touchStartX = e.changedTouches[0].clientX; }, {passive:true});
-  verseEl.addEventListener("touchend", (e) => {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dx) > 50){
-      if (dx < 0) moveVerse(1);
-      else moveVerse(-1);
-    }
-  }, {passive:true});
+  // Disable iPhone Safari pinch zoom / page gesture behavior
+  document.addEventListener("gesturestart", (e) => e.preventDefault(), {passive:false});
+  document.addEventListener("gesturechange", (e) => e.preventDefault(), {passive:false});
+  document.addEventListener("gestureend", (e) => e.preventDefault(), {passive:false});
+
+  let lastTouchEnd = 0;
+  document.addEventListener("touchend", (e) => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, {passive:false});
+
+  document.addEventListener("touchmove", (e) => {
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, {passive:false});
 
   // ---- Init ----
   async function init(){
