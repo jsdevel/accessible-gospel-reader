@@ -1,10 +1,28 @@
 (() => {
   // ---- Best-effort portrait lock ----
   async function tryLockPortrait(){
+    // Allow landscape if the device is likely a tablet (shortest side >= 500px)
+    const isTabletSize = Math.min(window.screen.width, window.screen.height) >= 500;
+    if (isTabletSize) {
+      try { if (screen.orientation?.unlock) screen.orientation.unlock(); } catch(_) {}
+      return;
+    }
     try{ if (screen.orientation?.lock) await screen.orientation.lock("portrait"); }catch(_){}
   }
   window.addEventListener("load", tryLockPortrait);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) tryLockPortrait(); });
+
+  // ---- Error Tracking ----
+  function trackError(err, extra = {}) {
+    console.error(err, extra);
+    if (window.Sentry) {
+      try {
+        Sentry.captureException(err, { extra });
+      } catch (e) {
+        console.error("Sentry capture failed", e);
+      }
+    }
+  }
 
   // ---- DOM ----
   const refTitleEl = document.getElementById("refTitle");
@@ -786,6 +804,7 @@
       if (push) pushState({view:"chapter", workIndex, bookIndex, segmentIndex});
       updateTopButtons();
     }catch(err){
+      trackError(err, { workIndex, bookIndex, segmentIndex, url });
       UI.setStatus("Failed to load chapter");
       renderCards([{
         title: "Could not load JSON",
@@ -1098,6 +1117,7 @@
                 epubModal.setAttribute('aria-hidden', 'true');
                 if (currentState()?.view === "home") renderHome(false);
               } catch(err) {
+                trackError(err, { context: "epub-import-save" });
                 alert("Error parsing EPUB: " + err);
               }
               btnSaveEpub.disabled = false;
@@ -1157,6 +1177,7 @@
         updateTopButtons();
       }
     }catch(err){
+      trackError(err, { context: "app-init" });
       UI.showNav();
       UI.setRef("Scriptures");
       UI.setStatus("Could not load nav.json");

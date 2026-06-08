@@ -1,159 +1,169 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
   <title>Accessible Gospel Reader</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0b0f14" />
   <link rel="icon" href="icon-512.png" />
   <link rel="stylesheet" href="styles.css" />
+  <script src="https://js.sentry-cdn.com/5ac4f5b4ccfe71548dff5780d7235612.min.js" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
+
 <body>
-<div class="app">
-  <div class="topbar">
-    <div class="top-left">
-      <div class="ref" id="ref"><span class="refTitle" id="refTitle">Scriptures</span><span class="refCV" id="refCV"></span></div>
-      <div class="status" id="status">Loading nav…</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="top-left">
+        <div class="ref" id="ref"><span class="refTitle" id="refTitle">Scriptures</span><span class="refCV"
+            id="refCV"></span></div>
+        <div class="status" id="status">Loading nav…</div>
+      </div>
+      <div class="top-actions" aria-label="Top navigation">
+        <button class="iconbtn" id="btnBack" title="Previous (verse/back)" aria-label="Previous">◀</button>
+        <button class="iconbtn" id="btnUp" title="Up" aria-label="Up">▲</button>
+        <button class="iconbtn" id="btnForward" title="Next (verse/forward)" aria-label="Next">▶</button>
+      </div>
     </div>
-    <div class="top-actions" aria-label="Top navigation">
-      <button class="iconbtn" id="btnBack" title="Previous (verse/back)" aria-label="Previous">◀</button>
-      <button class="iconbtn" id="btnUp" title="Up" aria-label="Up">▲</button>
-      <button class="iconbtn" id="btnForward" title="Next (verse/forward)" aria-label="Next">▶</button>
+
+    <div class="contentWrap">
+      <div class="contentScroll" id="contentScroll">
+        <div class="chips" id="crumbs" style="display:none"></div>
+        <div class="list" id="list"></div>
+        <div class="verse" id="verse" style="display:none"></div>
+
+        <button class="iconbtn gearBtn" id="btnGear" title="Settings" aria-label="Settings">⚙</button>
+
+      </div>
+    </div>
+
+    <div class="bottombar" id="bottombar" aria-label="Player controls" style="display:none">
+      <button class="iconbtn navbtn" id="btnPrevSeg" title="Previous phrase" aria-label="Previous phrase">◀</button>
+      <button class="iconbtn navbtn playBtn" id="btnReplaySeg" title="Play" aria-label="Play">▶</button>
+      <button class="iconbtn navbtn" id="btnNextSeg" title="Next phrase" aria-label="Next phrase">▶</button>
     </div>
   </div>
 
-  <div class="contentWrap">
-    <div class="contentScroll" id="contentScroll">
-      <div class="chips" id="crumbs" style="display:none"></div>
-      <div class="list" id="list"></div>
-      <div class="verse" id="verse" style="display:none"></div>
+  <div class="hint" id="hint">Speaking…</div>
 
-      <button class="iconbtn gearBtn" id="btnGear" title="Settings" aria-label="Settings">⚙</button>
-
+  <div class="rotateOverlay" aria-hidden="true">
+    <div class="panel">
+      <div class="t">Rotate to portrait</div>
+      <div class="s">This app is designed for portrait mode for easier reading.</div>
     </div>
   </div>
 
-  <div class="bottombar" id="bottombar" aria-label="Player controls" style="display:none">
-    <button class="iconbtn navbtn" id="btnPrevSeg" title="Previous phrase" aria-label="Previous phrase">◀</button>
-    <button class="iconbtn navbtn playBtn" id="btnReplaySeg" title="Play" aria-label="Play">▶</button>
-    <button class="iconbtn navbtn" id="btnNextSeg" title="Next phrase" aria-label="Next phrase">▶</button>
-  </div>
-</div>
 
-<div class="hint" id="hint">Speaking…</div>
+  <div class="modalBack" id="modalBack" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
+      <div class="sheetHeader">
+        <div class="sheetTitle">Player settings</div>
+        <button class="iconbtn sheetClose" id="btnCloseSettings" aria-label="Close">✕</button>
+      </div>
 
-<div class="rotateOverlay" aria-hidden="true">
-  <div class="panel">
-    <div class="t">Rotate to portrait</div>
-    <div class="s">This app is designed for portrait mode for easier reading.</div>
-  </div>
-</div>
-
-
-<div class="modalBack" id="modalBack" aria-hidden="true">
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="Settings">
-    <div class="sheetHeader">
-      <div class="sheetTitle">Player settings</div>
-      <button class="iconbtn sheetClose" id="btnCloseSettings" aria-label="Close">✕</button>
-    </div>
-
-    <div class="form">
-      <div class="row">
-        <label for="speed">Play speed</label>
-        <div>
-          <div class="stepper">
-            <button class="stepBtn" id="speedMinus" type="button" aria-label="Decrease play speed">−</button>
-            <input class="ctl stepInput" id="speed" type="number" min="0.5" max="1.5" step="0.05" inputmode="decimal" />
-            <button class="stepBtn" id="speedPlus" type="button" aria-label="Increase play speed">+</button>
+      <div class="form">
+        <div class="row">
+          <label for="speed">Play speed</label>
+          <div>
+            <div class="stepper">
+              <button class="stepBtn" id="speedMinus" type="button" aria-label="Decrease play speed">−</button>
+              <input class="ctl stepInput" id="speed" type="number" min="0.5" max="1.5" step="0.05"
+                inputmode="decimal" />
+              <button class="stepBtn" id="speedPlus" type="button" aria-label="Increase play speed">+</button>
+            </div>
+            <div class="help" id="speedVal"></div>
           </div>
-          <div class="help" id="speedVal"></div>
         </div>
-      </div>
 
-      <div class="row">
-        <label for="fontSize">Font size</label>
-        <div>
-          <div class="stepper">
-            <button class="stepBtn" id="fontMinus" type="button" aria-label="Decrease font size">−</button>
-            <input class="ctl stepInput" id="fontSize" type="number" min="18" max="54" step="1" inputmode="numeric" />
-            <button class="stepBtn" id="fontPlus" type="button" aria-label="Increase font size">+</button>
+        <div class="row">
+          <label for="fontSize">Font size</label>
+          <div>
+            <div class="stepper">
+              <button class="stepBtn" id="fontMinus" type="button" aria-label="Decrease font size">−</button>
+              <input class="ctl stepInput" id="fontSize" type="number" min="18" max="54" step="1" inputmode="numeric" />
+              <button class="stepBtn" id="fontPlus" type="button" aria-label="Increase font size">+</button>
+            </div>
+            <div class="help" id="fontVal"></div>
           </div>
-          <div class="help" id="fontVal"></div>
         </div>
-      </div>
 
-      <div class="row">
-        <label for="maxWords">Max words per phrase</label>
-        <div>
-          <div class="stepper">
-            <button class="stepBtn" id="wordsMinus" type="button" aria-label="Decrease max words per phrase">−</button>
-            <input class="ctl stepInput" id="maxWords" type="number" min="0" max="40" step="1" inputmode="numeric" />
-            <button class="stepBtn" id="wordsPlus" type="button" aria-label="Increase max words per phrase">+</button>
+        <div class="row">
+          <label for="maxWords">Max words per phrase</label>
+          <div>
+            <div class="stepper">
+              <button class="stepBtn" id="wordsMinus" type="button"
+                aria-label="Decrease max words per phrase">−</button>
+              <input class="ctl stepInput" id="maxWords" type="number" min="0" max="40" step="1" inputmode="numeric" />
+              <button class="stepBtn" id="wordsPlus" type="button" aria-label="Increase max words per phrase">+</button>
+            </div>
+            <div class="help">0 = auto by punctuation. Any number will split long phrases into chunks.</div>
           </div>
-          <div class="help">0 = auto by punctuation. Any number will split long phrases into chunks.</div>
         </div>
-      </div>
 
-      <div class="row">
-        <label for="hlColor">Highlight color</label>
-        <div class="two">
-          <input class="ctl" id="hlColor" type="color" />
-          <select class="ctl" id="hlStyle">
-            <option value="soft">Soft</option>
-            <option value="bold">Bold</option>
-          </select>
+        <div class="row">
+          <label for="hlColor">Highlight color</label>
+          <div class="two">
+            <input class="ctl" id="hlColor" type="color" />
+            <select class="ctl" id="hlStyle">
+              <option value="soft">Soft</option>
+              <option value="bold">Bold</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <div class="row">
-        <label for="voice">TTS voice</label>
-        <div>
-          <select class="ctl" id="voice"></select>
-          <div class="help" id="voiceHelp">Voices load from your device/browser.</div>
+        <div class="row">
+          <label for="voice">TTS voice</label>
+          <div>
+            <select class="ctl" id="voice"></select>
+            <div class="help" id="voiceHelp">Voices load from your device/browser.</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
 
-<div class="modalBack" id="epubModal" aria-hidden="true">
-  <div class="sheet" role="dialog" aria-modal="true" aria-label="Upload EPUB">
-    <div class="sheetHeader">
-      <div class="sheetTitle">Upload EPUB</div>
-      <button class="iconbtn sheetClose" id="btnCloseEpub" aria-label="Close">✕</button>
-    </div>
-    <div class="form">
-      <div class="row">
-        <label for="epubFile">File</label>
-        <input type="file" id="epubFile" accept=".epub" class="ctl" style="padding:6px; background:rgba(255,255,255,0.02)" />
+  <div class="modalBack" id="epubModal" aria-hidden="true">
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Upload EPUB">
+      <div class="sheetHeader">
+        <div class="sheetTitle">Upload EPUB</div>
+        <button class="iconbtn sheetClose" id="btnCloseEpub" aria-label="Close">✕</button>
       </div>
-      <div class="row">
-        <label for="epubTitle">Book Title</label>
-        <input type="text" id="epubTitle" class="ctl" placeholder="Auto-detected" />
-      </div>
-      <div class="row">
-        <label for="epubCollection">Collection</label>
-        <input type="text" id="epubCollection" class="ctl" placeholder="e.g. Personal Study" />
-      </div>
-      <div class="row" style="margin-top:4px;">
-        <div></div>
-        <button id="btnSaveEpub" class="ctl" style="background:var(--hlBg); color:var(--hl); font-weight:bold; cursor:pointer">Import & Save</button>
+      <div class="form">
+        <div class="row">
+          <label for="epubFile">File</label>
+          <input type="file" id="epubFile" accept=".epub" class="ctl"
+            style="padding:6px; background:rgba(255,255,255,0.02)" />
+        </div>
+        <div class="row">
+          <label for="epubTitle">Book Title</label>
+          <input type="text" id="epubTitle" class="ctl" placeholder="Auto-detected" />
+        </div>
+        <div class="row">
+          <label for="epubCollection">Collection</label>
+          <input type="text" id="epubCollection" class="ctl" placeholder="e.g. Personal Study" />
+        </div>
+        <div class="row" style="margin-top:4px;">
+          <div></div>
+          <button id="btnSaveEpub" class="ctl"
+            style="background:var(--hlBg); color:var(--hl); font-weight:bold; cursor:pointer">Import & Save</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script src="epub.js"></script>
-<script src="app.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(err => console.log('SW setup failed:', err));
-    });
-  }
-</script>
+  <script src="epub.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW setup failed:', err));
+      });
+    }
+  </script>
 </body>
+
 </html>

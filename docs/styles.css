@@ -176,7 +176,7 @@
     }
     .rotateOverlay .panel .t{font-weight:850;font-size:18px;margin-bottom:6px;}
     .rotateOverlay .panel .s{color:var(--muted);font-size:14px;line-height:1.35;}
-    @media (orientation: landscape){ .rotateOverlay{display:flex;} }
+    @media (orientation: landscape) and (max-height: 500px){ .rotateOverlay{display:flex;} }
     @media (prefers-reduced-motion: reduce){
       .seg{transition:none}
       .iconbtn:active{transform:none}

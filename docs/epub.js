@@ -122,7 +122,10 @@ const EpubLib = (() => {
               }
             });
           }
-        } catch(e) { console.error("TOC parse error", e); }
+        } catch(e) { 
+          console.error("TOC parse error", e);
+          if (window.Sentry) Sentry.captureException(e, { extra: { ncxPath: basePath + manifest[tocId] } });
+        }
       }
     }
     
