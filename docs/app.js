@@ -1096,6 +1096,7 @@
           const epubFile = document.getElementById("epubFile");
           const epubTitle = document.getElementById("epubTitle");
           const epubCollection = document.getElementById("epubCollection");
+          const epubSkipFront = document.getElementById("epubSkipFront");
 
           if (btnCloseEpub) btnCloseEpub.onclick = () => { epubModal.classList.remove('show'); epubModal.setAttribute('aria-hidden', 'true'); };
           
@@ -1107,7 +1108,8 @@
               try {
                 const col = epubCollection.value.trim() || "Personal Study";
                 const title = epubTitle.value.trim() || epubFile.files[0].name.replace('.epub','');
-                const newWorks = await EpubLib.parseEpubBlob(epubFile.files[0], col, title);
+                const skipFront = epubSkipFront ? epubSkipFront.checked : false;
+                const newWorks = await EpubLib.parseEpubBlob(epubFile.files[0], col, title, { skipFrontMatter: skipFront });
                 
                 newWorks.forEach(w => w.isCustom = true);
                 App.navRoot.scriptures.works = App.navRoot.scriptures.works.filter(w => !newWorks.some(nw => nw.title === w.title));

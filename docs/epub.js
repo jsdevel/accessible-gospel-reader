@@ -65,7 +65,7 @@ const EpubLib = (() => {
     });
   }
 
-  async function parseEpubBlob(fileBlob, collectionName, bookTitle) {
+  async function parseEpubBlob(fileBlob, collectionName, bookTitle, options = {}) {
     const zip = await JSZip.loadAsync(fileBlob);
     
     // Find container.xml
@@ -206,9 +206,33 @@ const EpubLib = (() => {
       });
     }
 
-    for (const seg of globalSegments) {
+    const FIRST_CHAP_REGEX = /^(chapter\s*([0-9ivxlc]+|one|two|three)|prologue|introduction|preface|foreword)\b/i;
+    
+    // Find the index of the first "real" chapter
+    let firstRealChapterIdx = globalSegments.findIndex(s => FIRST_CHAP_REGEX.test(s.title.trim()));
+    if (firstRealChapterIdx === -1) firstRealChapterIdx = 0;
+
+    for (let i = 0; i < globalSegments.length; i++) {
+        const seg = globalSegments[i];
         if (seg.texts.length === 0) continue;
-        const chapterData = { work: collectionName, book: bookTitle, verses: seg.texts.map(t => ({ text: t })) };
+
+        // Optional filtering: Discard all segments before the first chapter
+        if (options.skipFrontMatter && i < firstRealChapterIdx) {
+            console.log(`Skipping front matter segment: "${seg.title}" (pre-chapter)`);
+            continue;
+        }
+
+        let verses = seg.texts.map(t => ({ text: t }));
+        // Deduplicate: If the first verse is identical to the chapter title, skip it
+        if (verses.length > 1) {
+          const firstClean = verses[0].text.replace(/[^a-z0-9]/gi, '').toLowerCase();
+          const titleClean = seg.title.replace(/[^a-z0-9]/gi, '').toLowerCase();
+          if (firstClean && titleClean && firstClean === titleClean) {
+            verses = verses.slice(1);
+          }
+        }
+
+        const chapterData = { work: collectionName, book: bookTitle, verses: verses };
         const chapterId = `custom://${bookId}/ch_${chapterIndex}`;
         await storeChapter(chapterId, chapterData);
 
